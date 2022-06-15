@@ -96,12 +96,65 @@ if /I %importtype%==R (
 
 :STUDENTIMPORTPARSE
 REM This will now create a proper template file for the import
+REM In this procedure we are going to export the user file
+SETLOCAL enabledelayedexpansion
+cls
+del file.csv
+REM echo I am in the parsing with a file of:%~1
+del files.txt
+dir "%CD%"\*.csv /b >> "%CD%"\files.txt
+for /F "tokens=*" %%a in (files.txt) do (
+	REM echo Reading in the file named %%a and creating the import files
+	CALL:FILECONFIRMLOOP "%%a"
+)
+echo Action,ExtID,First Name,Last Name,Title,Privacy,AuditOpenings,CalendarID,ExtAccessLevelIDList,EXTDoorIDList,UserExpiration.EXPDate >> userimport%today%.csv
+for /F "skip=1 tokens=1-20 delims=," %%b in (%CONFRIMEDFILE%) do (
+	REM The new format for the exported file from ereslife is Student#(b), Last Name (c), Firstname (d), email (e), Area(f), Building (g), Floor (h), Suite (i), Room (j), Bed (k)
+	REM Sample provide by Melissa on June 10th 2022 is "Student ID,Last Name,First Name,Email,St. Jerome's University,Siegfried Hall (South Tower),Level 2,2517 (Don Room),2517,A"
+	REM Only need Last Name (c), Firstname (d), Building (g), Floor (h), Room (j) for the parsing
+	
+	REM echo I am going to create the user import file now
+	set floor=%%h
+	REM echo floor should be the last number of %%f
+	REM echo I want to set the floor to:!floor:~-1!
+	set floornum=!floor:~-1!
+	REM echo got a floor of !floornum!
+	REM echo now I have to find out which Building will be assigned based on %%e I am going to feed in %%e and do a findstring on it.
+	echo %%g|findstr /C:"Ryan" 
+	if !errorlevel!==0 set building=RH
+	echo %%g|findstr /C:"Siegfried"
+	if !errorlevel!==0 set building=SH
+	echo %%g|findstr /C:"Finn"
+	if !errorlevel!==0 set building=JRF
+	REM echo got a building of !building!
+	REM echo I am going to wire the line:RES!floornum!!building!,%%d,%%c,%%b,%today% to the file
+	echo RES!floornum!!building!,%%d,%%c,%%b,%today% >> userimport%today%.csv
+	if  !building!==JRF echo RES!floornum!!building! %%d %%c,JRF%%g-Residence Room >>importuserdoor%today%.csv
+	echo RES!floornum!!building! %%d %%c,RB%%g>>importuserdoor%today%.csv
+)
+del file.csv
+ENDLOCAL
+EXIT /b
 
+
+:FILECONFIRMLOOP
+REM THis will be a loop to confirm that the CSV file found is the correct one.
+echo Looks like there is a CSV file in the %CD% named %~1 If this is the file to be parsed for the import it should be in a format with the one user per line in a format of "Student #,Last Name,First Name,Building,Floor,Suite,Room,Bed"
+set /p CONFIRMED="Is the file named %~1 the correct file and in the correct format (Y) of should we check for more files (N)?"
+if /I "%CONFIRMED%"=="Y" set CONFIRMEDFILE=%~1
+if /I "%CONFIRMED%"=="N" EXIT /b
+EXIT /b
 
 :STUDENTTEMPLATE
 echo Last Name,First Name,Building,Floor,Room > %TODAY%%USERNAME%.csv
 exit /b
 
+:GETRESDOOREXID
+REM This is going to a procedure call to determine and return the EXTID of the door assignments based on what is in the ereslife export file
+
+
+:GETRESACCESSLEVELEXTID
+REM This is going to be a procedure call to determine and return the EXTID of the access level based on the assignment in the ereslife export
 
 
 
