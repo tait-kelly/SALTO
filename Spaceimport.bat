@@ -47,7 +47,7 @@ set GITHUBKEY=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
 set TITLE=Welcome to the new Salto Import script version %VERSION% compiled on %COMPILED%
 GOTO IMPORTTYPE
 
-
+curl -LJo doorswithids.csv  https://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@github.com/tait-kelly/Salto/raw/main/doorswithids.csv
 
 :IMPORTTYPE
 Set /P IMPORTTYPE="Are you using the script for Residence imports or for standard users? (R or S)"
@@ -100,6 +100,7 @@ REM In this procedure we are going to export the user file
 SETLOCAL enabledelayedexpansion
 cls
 del file.csv
+set COUNT=0
 REM echo I am in the parsing with a file of:%~1
 del files.txt
 dir "%CD%"\*.csv /b >> "%CD%"\files.txt
@@ -107,7 +108,7 @@ for /F "tokens=*" %%a in (files.txt) do (
 	REM echo Reading in the file named %%a and creating the import files
 	CALL:FILECONFIRMLOOP "%%a"
 )
-echo Action,ExtID,First Name,Last Name,Title,Privacy,AuditOpenings,CalendarID,ExtAccessLevelIDList,EXTDoorIDList,UserExpiration.EXPDate >> userimport%today%.csv
+echo Action,ExtID,First Name,Last Name,Title,Privacy,AuditOpenings,CalendarID,ExtAccessLevelIDList,EXTDoorIDList,UserExpiration.EXPDate >> %USERNAME%import%today%.csv
 for /F "skip=1 tokens=1-20 delims=," %%b in (%CONFRIMEDFILE%) do (
 	REM The new format for the exported file from ereslife is Student#(b), Last Name (c), Firstname (d), email (e), Area(f), Building (g), Floor (h), Suite (i), Room (j), Bed (k)
 	REM Sample provide by Melissa on June 10th 2022 is "Student ID,Last Name,First Name,Email,St. Jerome's University,Siegfried Hall (South Tower),Level 2,2517 (Don Room),2517,A"
@@ -121,16 +122,35 @@ for /F "skip=1 tokens=1-20 delims=," %%b in (%CONFRIMEDFILE%) do (
 	REM echo got a floor of !floornum!
 	REM echo now I have to find out which Building will be assigned based on %%e I am going to feed in %%e and do a findstring on it.
 	echo %%g|findstr /C:"Ryan" 
-	if !errorlevel!==0 set building=RH
+	if !errorlevel!==0 (
+		set building=RH
+		set BUILDINGNAME=Ryan Hall
+		set ROOM=RB-%%j
+	)
 	echo %%g|findstr /C:"Siegfried"
-	if !errorlevel!==0 set building=SH
+	if !errorlevel!==0 (
+		set building=SH
+		set BUILDINGNAME=Siegfried Hall
+		set ROOM=RB-%%j
+	)
 	echo %%g|findstr /C:"Finn"
-	if !errorlevel!==0 set building=JRF
+	if !errorlevel!==0 (
+		set building=JRF
+		set BUILDINGNAME=Finn
+		set ROOM=JRF-%%j
+	)
 	REM echo got a building of !building!
 	REM echo I am going to wire the line:RES!floornum!!building!,%%d,%%c,%%b,%today% to the file
-	echo RES!floornum!!building!,%%d,%%c,%%b,%today% >> userimport%today%.csv
-	if  !building!==JRF echo RES!floornum!!building! %%d %%c,JRF%%g-Residence Room >>importuserdoor%today%.csv
-	echo RES!floornum!!building! %%d %%c,RB%%g>>importuserdoor%today%.csv
+	call:GETRESDOOREXTID DOOREXTID %ROOM%
+	call:GETRESACCESSLEVELEXTID ACCEESSEXTID "Resident %FLOORNUM% %BUILDINGNAME%"
+	set EXTID=%TODAY%%USERNAME%%COUNT%
+	echo I just created an EXTID of:%EXTID%
+	SET /A COUNT=COUNT+1
+	echo the count is now:%COUNT%
+	echo 1;%EXTID%;%%d;%%c;RES!floornum!!building!;0;1;6;;;%ACCESSEXTID%;%DOOREXTID%;%EXPIRY% >> %USERNAME%import%today%.csv
+	REM echo RES!floornum!!building!,%%d,%%c,%%b,%today% >> userimport%today%.csv
+	REM if  !building!==JRF echo RES!floornum!!building! %%d %%c,JRF%%g-Residence Room >>importuserdoor%today%.csv
+	REM echo RES!floornum!!building! %%d %%c,RB%%g>>importuserdoor%today%.csv
 )
 del file.csv
 ENDLOCAL
@@ -149,14 +169,32 @@ EXIT /b
 echo Last Name,First Name,Building,Floor,Room > %TODAY%%USERNAME%.csv
 exit /b
 
-:GETRESDOOREXID
+:GETRESDOOREXTID VAR ROOMNAME
+::                   -- VAR   [in]     - return variable
+::                   -- ROOMNAME [in] - door name to be searched for.
 REM This is going to a procedure call to determine and return the EXTID of the door assignments based on what is in the ereslife export file
+curl -LJo doorswithids.csv  https://%GITHUBKEY%@github.com/tait-kelly/Salto/raw/main/doorswithids.csv
+findstr /b /c:"%~2" doorswithids.csv > results.txt
+for /F "tokens=*" %%a in (results.txt) do (
+	REM echo Reading in the file named %%a and creating the import files
+	set VAR=%%b
+	echo looks like the Door EXTID should be %VAR%
+	PAUSE
+)
+EXIT /b
 
-
-:GETRESACCESSLEVELEXTID
+:GETRESACCESSLEVELEXTID VAR ACCESSLEVEL 
 REM This is going to be a procedure call to determine and return the EXTID of the access level based on the assignment in the ereslife export
 
-
+curl -LJo doorswithids.csv  https://%GITHUBKEY%@github.com/tait-kelly/Salto/raw/main/doorswithids.csv
+findstr /b /c:"%~2" accesslevelswithids.csv > results.txt
+for /F "tokens=*" %%a in (results.txt) do (
+	REM echo Reading in the file named %%a and creating the import files
+	set VAR=%%b
+	echo looks like the Access Level EXTID should be %VAR%
+	PAUSE
+)
+EXIT /b
 
 :SCRIPTUPDATE
 REM echo I am in the script update section
