@@ -47,6 +47,10 @@ set GITHUBKEY=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
 set TITLE=Welcome to the new Salto Import script version %VERSION% compiled on %COMPILED%
 GOTO IMPORTTYPE
 
+set IMPORTTYPE=0
+set IMPORTTEMPLATE=0
+set EXPIRY=0
+
 curl -LJo doorswithids.csv  https://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@github.com/tait-kelly/Salto/raw/main/doorswithids.csv
 
 :IMPORTTYPE
@@ -69,28 +73,38 @@ GOTO IMPORTORTEMPLATE
 echo Next will be an prompt for the imported user expiry. The data must be entered in a format of YYYY-MM-DD, if it is not entered correctly the expiry will be set to one month from the import day.
 set /p EXPIRY="Expiry Date: YYYY-MM-DD."
 set EXPIRY=%EXPIRY%T23:59:00
+echo set and expiry to:%EXPIRY%
+PAUSE
+if /I %importtype%==R goto STARTR
+if /I %importtype%==S goto STARTS
 
-:START
-if /I %importtype%==R (
-	if /I %IMPORTORTEMPLATE%==D (
-		echo You specified you will be providing a data file for this script to parse and import into salto.
-		echo The data file should be a CSV (Comma Separated Values) in the format of "Last Name,First Name,Building,Floor,Room"
-		echo The file should also be in the folder %CD%. Press enter at the next prompt to open file explorer to this folder
-		PAUSE
-		explorer.exe %CD%
-		echo Once you have copied the file to the folder %CD% press enter on this screen to continue
-		PAUSE
-		GOTO STUDENTIMPORTPARSE
-	)
-	if /I %IMPORTORTEMPLATE%==T (
-		echo You have specified that you would like a template created for you and then import the data
-		echo Next a template will be created and opened for you to complete once done please select save then continue on this script
-		call:STUDENTTEMPLATE
-		%TODAY%%USERNAME%.csv
-		PAUSE
-		GOTO STUDENTIMPORTPARSE		
-	)
-)	
+:STARTR
+echo now in the start procedure with a importtype:%importtype% and importtemplate of:%IMPORTORTEMPLATE%
+PAUSE
+if /I %IMPORTORTEMPLATE%==D (
+	echo You specified you will be providing a data file for this script to parse and import into salto.
+	echo The data file should be a CSV-Comma Separated Values- in the format of "Last Name,First Name,Building,Floor,Room"
+	echo The file should also be in the folder %CD%. Press enter at the next prompt to open file explorer to this folder
+	echo Once you have copied the file to the folder %CD% press enter on this screen to continue
+	REM PAUSE
+	explorer.exe %CD%
+	PAUSE
+	GOTO STUDENTIMPORTPARSE
+	echo Looks like all should be done for the parsing now so need to go to import instructions
+)
+if /I %IMPORTORTEMPLATE%==T (
+	echo You have specified that you would like a template created for you and then import the data
+	echo Next a template will be created and opened for you to complete once done please select save then continue on this script
+	PAUSE
+	call:STUDENTTEMPLATE
+	%TODAY%%USERNAME%.csv
+	PAUSE
+	GOTO STUDENTIMPORTPARSE	
+	echo Looks like all should be done for the parsing now so need to go to import instructions
+)
+	
+:STARTS
+
 	
 
 
@@ -98,7 +112,7 @@ if /I %importtype%==R (
 REM This will now create a proper template file for the import
 REM In this procedure we are going to export the user file
 SETLOCAL enabledelayedexpansion
-cls
+REM cls
 del file.csv
 set COUNT=0
 REM echo I am in the parsing with a file of:%~1
