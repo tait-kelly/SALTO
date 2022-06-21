@@ -9,9 +9,15 @@ REM =================================NOTES======================================
 REM Version 2.0
 REM New version for SALTO SPACE imports
 REM 2022-06-10 Finished script to a point of needing to parse the student import file.
+REM Version 2.4
+REM Most functionality is working for imports
+REM Added option for conference imports
+REM Version 2.5
+REM Fixes issues with updating script
 REM =================================NOTES=======================================================
 
 REM ==============================Pending Changes / Improvements=================================
+REM Need to test working on templates and make a requirement using start /wait for the opening of files to ensure they are closed before trying to parse and import.
 REM ==============================Pending Changes / Improvements=================================
 
 REM =====================KNOWN ISSUES / BUGS=====================================================
