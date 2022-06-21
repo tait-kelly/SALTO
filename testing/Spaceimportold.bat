@@ -39,14 +39,14 @@ REM =====================NEW SCRIPT WORKFLOW====================================
 
 
 
-set VERSION=2.5
-set COMPILED=June 21st, 2022
+set VERSION=2.0
+set COMPILED=June 10th, 2022
 for /f "delims=." %%a in ('wmic OS Get localdatetime ^| find "."') do set dt=%%a
 set today=%dt:~0,14%
 echo today is:%TODAY%
 set GITHUBKEY=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
 set TITLE=Welcome to the new Salto Import script version %VERSION% compiled on %COMPILED%
-
+GOTO IMPORTTYPE
 
 set IMPORTTYPE=0
 set IMPORTTEMPLATE=0
@@ -55,13 +55,12 @@ set CONFIRMEDFILE=0
 set CORRECT=0
 set DOOREXTID=0
 
-GOTO IMPORTTYPE
+curl -LJo doorswithids.csv  https://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@github.com/tait-kelly/Salto/raw/main/doorswithids.csv
 
 :IMPORTTYPE
-Set /P IMPORTTYPE="Are you using the script for Residence(R) imports or General users(G) or Conference Users(C) ? (R or G or C)"
+Set /P IMPORTTYPE="Are you using the script for Residence imports or for standard users? (R or S)"
 if /I %importtype%==R goto IMPORTORTEMPLATE
-if /I %importtype%==G goto IMPORTORTEMPLATE
-if /I %importtype%==C goto IMPORTORTEMPLATE
+if /I %importtype%==S goto IMPORTORTEMPLATE
 echo Looks like you made an invalid selection press any key to restart
 PAUSE
 GOTO IMPORTTYPE
@@ -81,8 +80,7 @@ set /p EXPIRY="Expiry Date (YYYY-MM-DD):"
 set EXPIRY=%EXPIRY%T23:59:00
 REM echo set and expiry to:%EXPIRY%
 if /I %importtype%==R goto STARTR
-if /I %importtype%==G goto STARTG
-if /I %importtype%==C goto STARTC
+if /I %importtype%==S goto STARTS
 GOTO EOF
 
 :STARTR
@@ -104,7 +102,7 @@ if /I %IMPORTORTEMPLATE%==H (
 	echo Next a template will be created and opened for you to complete once done please select save then continue on this script
 	PAUSE
 	call:STUDENTTEMPLATE
-	start %USERNAME%template%TODAY%.csv
+	%USERNAME%import%TODAY%.csv
 	PAUSE
 	call:STUDENTIMPORTPARSE	
 	echo Looks like all should be done for the parsing now so need to go to import instructions
@@ -114,48 +112,13 @@ if EXIST files.txt del files.txt
 if EXIST results.txt del results.txt
 if EXIST doorswithids.txt del doorswithids.txt
 if EXIST accesslevelswithids.txt del accesslevelswithids.txt
-if EXIST count.txt del count.txt					
+if EXIST count.txt del count.txt
 call:IMPORTINSTRUCTIONS
 echo looks like the process should be done.
 GOTO EOF
 
 	
-:STARTG
-
-:STARTC
-REM echo now in the start procedure with a importtype:%importtype% and importtemplate of:%IMPORTORTEMPLATE%
-if /I %IMPORTORTEMPLATE%==Y (
-REM	echo You specified you will be providing a data file for this script to parse and import into salto.
-	echo The data file you need to provide must be in the format of "Student #,Last Name,First Name,Email,Area,Building,Floor,Room,Bed"
-	echo The file should also be in the folder %CD%.
-	echo This folder will be opened for you to copy the file into it.
-	echo Once you have copied the file to the folder %CD% press enter on this screen to continue
-	REM PAUSE
-	explorer.exe %CD%
-	PAUSE
-	call:CONFERENCEIMPORTPARSE
-	echo Looks like all should be done for the parsing now so need to go to import instructions
-)
-if /I %IMPORTORTEMPLATE%==H (
-	echo You have specified that you would like a template created for you and then import the data
-	echo Next a template will be created and opened for you to complete once done please select save and close then continue on this script
-	PAUSE
-	call:CONFERENCETEMPLATE
-	start /wait %USERNAME%template%TODAY%.csv
-	PAUSE
-	call:CONFERENCEIMPORTPARSE	
-	echo Looks like all should be done for the parsing now so need to go to import instructions
-) 
-call:COPYTOSALTO
-if EXIST files.txt del files.txt
-if EXIST results.txt del results.txt
-if EXIST doorswithids.txt del doorswithids.txt
-if EXIST accesslevelswithids.txt del accesslevelswithids.txt
-if EXIST count.txt del count.txt					
-call:IMPORTINSTRUCTIONS
-echo looks like the process should be done.
-GOTO EOF
-
+:STARTS
 
 	
 
@@ -192,12 +155,12 @@ echo The System is now going to parse file named:%CONFIRMEDFILE%
 REM echo now the file will be parsed.
 set COUNT=0
 
-echo Action;ExtID;First Name;Last Name;Title;Privacy;AuditOpenings;CalendarID;ExtAccessLevelIDList;EXTDoorIDList;UserExpiration.EXPDate >> %USERNAME%import%today%.csv
+echo Action,ExtID,First Name,Last Name,Title,Privacy,AuditOpenings,CalendarID,ExtAccessLevelIDList,EXTDoorIDList,UserExpiration.EXPDate >> %USERNAME%import%today%.csv
 REM @echo on
 set EXTID=!TODAY!!USERNAME!
 REM echo I just created an EXTID of:%EXTID%
 curl -LJo doorswithids.txt  https://%GITHUBKEY%@github.com/tait-kelly/Salto/raw/main/doorswithids.txt > NUL
-curl -LJo accesslevelswithids.txt  https://%GITHUBKEY%@github.com/tait-kelly/Salto/raw/main/accesslevelswithids.txt > NUL
+curl -LJo doorswithids.txt  https://%GITHUBKEY%@github.com/tait-kelly/Salto/raw/main/doorswithids.txt > NUL
 for /F "skip=1 tokens=1-20 delims=," %%b in (%CONFIRMEDFILE%) do (
 	REM The new format for the exported file from ereslife is Student#(b), Last Name (c), Firstname (d), email (e), Area(f), Building (g), Floor (h), Suite (i), Room (j), Bed (k)
 	REM Sample provide by Melissa on June 10th 2022 is "Student ID,Last Name,First Name,Email,St. Jerome's University,Siegfried Hall (South Tower),Level 2,2517 (Don Room),2517,A"
@@ -250,93 +213,6 @@ for /F "skip=1 tokens=1-20 delims=," %%b in (%CONFIRMEDFILE%) do (
 ENDLOCAL
 EXIT /b
 
-:CONFERENCEIMPORTPARSE
-REM This will now create a proper template file for the import
-REM In this procedure we are going to export the user file
-SETLOCAL enabledelayedexpansion
-REM cls
-REM call:FILECHECK CONFIRMEDFILE
-if EXIST file.csv del file.csv
-REM echo I am in the parsing with a file of:%~1
-if EXIST files.txt del files.txt
-if EXIST %USERNAME%import%today%.csv del %USERNAME%import%today%.csv
-dir "%CD%"\*.csv /b >> "%CD%"\files.txt
-find /v /c "" files.txt >count.txt 
-findstr /C:"1" count.txt >NUL
-if %ERRORLEVEL%==0 (
-	REM echo looks like there is only one file.
-	for /F "tokens=*" %%a in (files.txt) do (
-		REM echo Reading in the file named %%a and creating the import files
-		set CONFIRMEDFILE=%%a
-		REM if /I %CORRECT%==Y echo Already have the confirmed file
-		REM if NOT /I %CORRECT%==Y CALL:FILECONFIRMLOOP %%a CORRECT 
-)
-)
-findstr /C:"1" count.txt >NUL
-if NOT %ERRORLEVEL%==0 (
-	echo looks like there is more than one file. Please enter the file to use in based on the list below.
-	type files.txt
-	set /p CONFIRMEDFILE="Enter the file name to use for import exactly as shown above:"
-)
-echo The System is now going to parse file named:%CONFIRMEDFILE%
-REM echo now the file will be parsed.
-set COUNT=0
-
-echo Action;ExtID;First Name;Last Name;Title;Privacy;AuditOpenings;CalendarID;ExtAccessLevelIDList;EXTDoorIDList;UserExpiration.EXPDate >> %USERNAME%import%today%.csv
-REM @echo on
-set EXTID=!TODAY!!USERNAME!
-REM echo I just created an EXTID of:%EXTID%
-curl -LJo doorswithids.txt  https://%GITHUBKEY%@github.com/tait-kelly/Salto/raw/main/doorswithids.txt > NUL
-curl -LJo accesslevelswithids.txt  https://%GITHUBKEY%@github.com/tait-kelly/Salto/raw/main/accesslevelswithids.txt > NUL
-for /F "skip=1 tokens=1-20 delims=," %%b in (%CONFIRMEDFILE%) do (
-	REM The format for file is Last Name(b),First Name(c),Building(d),Floor(e),Room(f) 
-	set floor=%%e
-	REM echo floor should be the last number of %%f
-	REM echo I want to set the floor to:!floor:~-1!
-	set floornum=!floor:~-1!
-	REM echo got a floor of !floornum!
-	REM echo now I have to find out which Building will be assigned based on %%e I am going to feed in %%e and do a findstring on it.
-	echo %%d|findstr /C:"Ryan" 
-	if !errorlevel!==0 (
-		set building=RH
-		set "BUILDINGNAME=N"
-		set ROOM=RB-%%f
-	)
-	echo %%d|findstr /C:"Siegfried" >NUL
-	if !errorlevel!==0 (
-		set building=SH
-		set "BUILDINGNAME=S"
-		set ROOM=RB-%%f
-	)
-	echo %%d|findstr /C:"Finn" >NUL
-	if !errorlevel!==0 (
-		set building=JRF
-		set BUILDINGNAME=F
-		set ROOM=JRF-%%f
-	)
-	REM echo got a building of !building!
-	REM echo I am going to wire the line:RES!floornum!!building!,%%d,%%c,%%b,%today% to the file
-	REM echo calling to get the door ID with:!ROOM!
-	call:GETRESDOOREXTID DOORID,!ROOM!
-	REM echo Looks like I got a return of:!DOORID!
-	REM echo Building name is:!BUILDINGNAME!
-	echo calling getconfaccesslevelextid with !FLOORNUM!,!BUILDINGNAME!
-	call:GETCONFACCESSLEVELEXTID ACCESSID,!FLOORNUM!,!BUILDINGNAME!
-	REM echo Looks like I got a return of:!ACCESSID!
-	set EXTID=!TODAY!!USERNAME!!COUNT!
-	
-	SET /A COUNT=COUNT+1
-	REM echo the count is now:%COUNT%
-	REM echo I am adding the line:1;%EXTID%!COUNT!;%%d;%%c;RES!floornum!!building!;0;1;6;!ACCESSID!;!DOORID!;%EXPIRY%
-	echo 1;%EXTID%!COUNT!;%%c;%%b;CONF!floornum!!building!;0;1;6;!ACCESSID!;!DOORID!;%EXPIRY% >> %USERNAME%import%today%.csv
-	REM echo RES!floornum!!building!,%%d,%%c,%%b,%today% >> userimport%today%.csv
-	REM if  !building!==JRF echo RES!floornum!!building! %%d %%c,JRF%%g-Residence Room >>importuserdoor%today%.csv
-	REM echo RES!floornum!!building! %%d %%c,RB%%g>>importuserdoor%today%.csv
-)
-
-ENDLOCAL
-EXIT /b
-
 :COPYTOSALTO
 if exist x: net use x: /delete > NUL
 net use x: \\172.25.126.100\imports
@@ -377,11 +253,7 @@ if /I "%CONFIRMED%"=="N" EXIT /b
 EXIT /b
 
 :STUDENTTEMPLATE
-echo Student #,Last Name,First Name,Email,Area,Building,Floor,Room,Bed > %USERNAME%template%TODAY%.csv
-exit /b
-
-:CONFERENCETEMPLATE
-echo Last Name,First Name,Building,Floor,Room > %USERNAME%template%TODAY%.csv
+echo Last Name,First Name,Building,Floor,Room > %TODAY%%USERNAME%.csv
 exit /b
 
 :GETRESDOOREXTID VAR ROOMNAME
@@ -402,6 +274,7 @@ EXIT /b
 
 :GETRESACCESSLEVELEXTID VAR FLOOR BUILDINGNAME 
 REM This is going to be a procedure call to determine and return the EXTID of the access level based on the assignment in the ereslife export
+REM echo I am going to search for Resident %~2 %~3 %~4 in the access levles file.
 findstr /b /c:"Resident %~2 %~3 %~4" accesslevelswithids.txt > results.txt
 for /F "tokens=1-2 delims=," %%a in (results.txt) do (
 	REM echo Reading in the file named %%a and creating the import files
@@ -410,21 +283,6 @@ for /F "tokens=1-2 delims=," %%a in (results.txt) do (
 	REM PAUSE
 )
 EXIT /b
-
-:GETCONFACCESSLEVELEXTID VAR FLOOR BUILDINGNAME 
-REM This is going to be a procedure call to determine and return the EXTID of the access level based on the assignment in the ereslife export
-REM echo I am going to search for Conference %~2%~3 in the access levles file.
-findstr /b /c:"CONFERENCE %~2%~3" accesslevelswithids.txt > results.txt
-for /F "tokens=1-2 delims=," %%a in (results.txt) do (
-	REM echo Reading in the file named %%a and creating the import files
-	set "%~1=%%b"
-	REM echo looks like the Access Level EXTID should be %%b
-	REM PAUSE
-)
-REM PAUSE
-EXIT /b
-
-
 
 :SCRIPTUPDATE
 REM echo I am in the script update section
@@ -436,11 +294,11 @@ for /f "tokens=1-2 delims=:" %%a in ('FINDSTR /C:"Version:" Version.txt') do set
 if %CURRVER% LEQ %VERSION% echo well looks like we have the current version lets resume the script.
 if "%CURRVER%" GTR "%VERSION%" (
 	echo looks like there is a newer version
-	curl -LJo spaceimport%CURRVER%.bat  https://%GITHUBKEY%@github.com/tait-kelly/ducs/raw/main/spaceimport.bat
+	curl -LJo newducs%CURRVER%.bat  https://%GITHUBKEY%@github.com/tait-kelly/ducs/raw/main/newducs.bat
 	set /p RUNNEW="I have the new script version do you want to run it now (y/n or yes/no)?"
-	if "%RUNNEW%"=="y" start spaceimport%CURRVER%.bat s
-	if "%RUNNEW%"=="yes" start spaceimport%CURRVER%.bat s
-	copy spcaeimport.bat spaceimport%VERSION%.bat
+	if "%RUNNEW%"=="y" start newducs%CURRVER%.bat s
+	if "%RUNNEW%"=="yes" start newducs%CURRVER%.bat s
+	copy newducs.bat newducs%VERSION%.bat
 	GOTO EOF
 )
 del Version.txt
@@ -456,8 +314,7 @@ echo 2. Click on the menu option tools then Syncronization
 echo 3. Select CSV import and click OK.
 echo 4. Confirm that under the entity section User is selected
 if /I %importtype%==R echo 5. Ensure that Student Affairs is selected for Partition for new entities
-if /I %importtype%==G echo 5. Ensure that General is selected for Partition for new entities
-if /I %importtype%==C echo 5. Ensure that General is selected for Partition for new entities
+if /I %importtype%==S echo 5. Ensure that General is selected for Partition for new entities
 echo 6. Under "Select File to import/Syncronize" enter C:\SALTO\ProAccess Space\data\imports\%USERNAME%import%today%.csv
 echo 7. Change Skip Row to "1" skip first row which will the headers
 echo 8. Ensure Custom is selected for separator and that ; is the separator with , as secondary and " as text qualifier (this is all the default settings)
@@ -476,7 +333,7 @@ if /I %importtype%==R (
 	echo ---10. Access point ID list [EXTDoorIDList]
 	echo ---11. User expiration [UserExpiration.EXPDate]
 )
-if /I %importtype%==G (
+if /I %importtype%==S (
 	echo 10. Add in a total of 9 Fields and specify each field in the order by selecting each field and searching for the field name
 		echo ---1. Action [Action]
 	echo ---2. Ext ID [ExtID]
@@ -487,20 +344,6 @@ if /I %importtype%==G (
 	echo ---7. Enable auditor in the key [AuditOpenings]
 	echo ---8. Calendar [CalendarID]
 	echo ---9. User expiration [UserExpiration.EXPDate]
-)
-if /I %importtype%==C (
-	echo 10. Add in a total of 11 Fields and specify each field in the order by selecting each field and searching for the field name
-	echo ---1. Action [Action]
-	echo ---2. Ext ID [ExtID]
-	echo ---3. First name [FirstName]
-	echo ---4. Last name [LastName]
-	echo ---5. Title [Title]
-	echo ---6. Override privacy [Privacy]
-	echo ---7. Enable auditor in the key [AuditOpenings]
-	echo ---8. Calendar [CalendarID]
-	echo ---9. Access level ID list [ExtAccessLevelIDList]
-	echo ---10. Access point ID list [EXTDoorIDList]
-	echo ---11. User expiration [UserExpiration.EXPDate]
 )
 echo 11. Verify all fields are set exactly as listed then click next
 echo 12. Verify the basic information on the next screen is correct and then click Finish to start the import process
@@ -513,6 +356,7 @@ if "WORKED"=="N" (
 	timeout /T 10
 	start "" https://uwaterloo.atlassian.net/servicedesk/customer/portal/14/group/259/create/1072
 )	
+PAUSE
 EXIT /B
 
 :EOF
@@ -525,4 +369,3 @@ if EXIST count.txt del count.txt
 if EXIST %USERNAME%import%today%.csv del %USERNAME%import%today%.csv
 echo Cleanup should now be completed
 PAUSE
-EXIT
