@@ -45,7 +45,7 @@ REM =====================NEW SCRIPT WORKFLOW====================================
 
 
 
-set VERSION=2.4
+set VERSION=2.5
 set COMPILED=June 21st, 2022
 for /f "delims=." %%a in ('wmic OS Get localdatetime ^| find "."') do set dt=%%a
 set today=%dt:~0,14%
