@@ -39,11 +39,11 @@ REM =====================NEW SCRIPT WORKFLOW====================================
 
 
 
-set VERSION=2.4
+set VERSION=2.5
 set COMPILED=June 21st, 2022
 for /f "delims=." %%a in ('wmic OS Get localdatetime ^| find "."') do set dt=%%a
 set today=%dt:~0,14%
-REM echo today is:%TODAY%
+echo today is:%TODAY%
 set GITHUBKEY=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
 set TITLE=Welcome to the new Salto Import script version %VERSION% compiled on %COMPILED%
 
@@ -54,10 +54,7 @@ set EXPIRY=0
 set CONFIRMEDFILE=0
 set CORRECT=0
 set DOOREXTID=0
-echo this script was called with the paramter of:%1
-if NOT "%1"=="s" (
-	call:SCRIPTUPDATE
-)
+
 GOTO IMPORTTYPE
 
 :IMPORTTYPE
@@ -431,35 +428,23 @@ EXIT /b
 
 :SCRIPTUPDATE
 REM echo I am in the script update section
-REM I can grab the current version listing from github via curl -LJO  https://%GITHUBKEY%@github.com/tait-kelly/SALTO/raw/main/Version.txt
+REM I can grab the current version listing from github via curl -LJO  https://%GITHUBKEY%@github.com/tait-kelly/ducs/raw/main/Version.txt
 REM echo I am in the script update section
 if EXIST %CD%\Versions.txt del %CD%\Version.txt
-curl -LJOs https://%GITHUBKEY%@github.com/tait-kelly/SALTO/raw/main/Version.txt > NUL
+curl -LJOs  https://%GITHUBKEY%@github.com/tait-kelly/ducs/raw/main/Version.txt > NUL
 for /f "tokens=1-2 delims=:" %%a in ('FINDSTR /C:"Version:" Version.txt') do set CURRVER=%%b
 if %CURRVER% LEQ %VERSION% echo well looks like we have the current version lets resume the script.
-echo time to check if %CURRVER% GTR %VERSION%
 if "%CURRVER%" GTR "%VERSION%" (
-	curl -LJo spaceimport%CURRVER%.bat https://%GITHUBKEY%@github.com/tait-kelly/SALTO/raw/main/spaceimport.bat
-
+	echo looks like there is a newer version
+	curl -LJo spaceimport%CURRVER%.bat  https://%GITHUBKEY%@github.com/tait-kelly/ducs/raw/main/spaceimport.bat
+	set /p RUNNEW="I have the new script version do you want to run it now (y/n or yes/no)?"
+	if "%RUNNEW%"=="y" start spaceimport%CURRVER%.bat s
+	if "%RUNNEW%"=="yes" start spaceimport%CURRVER%.bat s
+	copy spcaeimport.bat spaceimport%VERSION%.bat
+	GOTO EOF
 )
-set /p RUNNEW="I have the new script version do you want to run it now (y/n or yes/no)?"
-if /I "%RUNNEW%"=="y" (
-REM	echo if you selected yes I should launch spaceimport%CURRVER%.bat s
-REM 	echo I am going to start the new script now
-	copy spaceimport.bat spaceimport%VERSION%.bat
-	cls
-	start "Salto Space Import Version %CURRVER%" /B spaceimport%CURRVER%.bat s
-	EXIT
-)	
-if /I "%RUNNEW%"=="yes" (
-REM 		echo I am going to start the new script now
-	copy spaceimport.bat spaceimport%VERSION%.bat
-	cls
-	start "Salto Space Import Version %CURRVER%" /B spaceimport%CURRVER%.bat s
-	EXIT
-)
-exit /b
-
+del Version.txt
+EXIT /b
 
 
 :IMPORTINSTRUCTIONS
