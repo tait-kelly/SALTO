@@ -39,8 +39,8 @@ REM =====================NEW SCRIPT WORKFLOW====================================
 
 
 
-set VERSION=2.5
-set COMPILED=July 21st, 2022
+set VERSION=2.6
+set COMPILED=August 5th, 2022
 for /f "delims=." %%a in ('wmic OS Get localdatetime ^| find "."') do set dt=%%a
 set today=%dt:~0,14%
 echo today is:%TODAY%
@@ -153,7 +153,7 @@ if EXIST doorswithids.txt del doorswithids.txt
 if EXIST accesslevelswithids.txt del accesslevelswithids.txt
 if EXIST count.txt del count.txt					
 call:IMPORTINSTRUCTIONS
-echo looks like the process should be done.
+rem echo looks like the process should be done.
 GOTO EOF
 
 
@@ -516,13 +516,13 @@ if "WORKED"=="N" (
 EXIT /B
 
 :EOF
-echo Looks like this is the end of the script
+REM echo Looks like this is the end of the script
 if EXIST files.txt del files.txt
 if EXIST results.txt del results.txt
 if EXIST doorswithids.txt del doorswithids.txt
 if EXIST accesslevelswithids.txt del accesslevelswithids.txt
 if EXIST count.txt del count.txt
 if EXIST %USERNAME%import%today%.csv del %USERNAME%import%today%.csv
-echo Cleanup should now be completed
+echo The import should now be completed you can press enter to close this window.
 PAUSE
 EXIT
